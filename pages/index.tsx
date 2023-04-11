@@ -1,123 +1,149 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import {useMemo, useRef} from 'react'
+import {Inter} from 'next/font/google'
+import {Canvas, useFrame} from '@react-three/fiber'
+import {
+  Gltf,
+  CameraControls,
+  Grid
+} from '@react-three/drei'
+import World from '@/components/World'
+import {Range} from 'react-range';
+import {useState} from 'react'
+import chance from 'chance'
+import useNoise2D from '@/hooks/useNoise2D'
+import useTerrainNoise from '@/hooks/useTerrainNoise'
+import terrainType from '@/libs/terrain-types'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({subsets: ['latin']})
+
+
+function MapBuilder({getInfo, size, spacing}) {
+  const offset = size * spacing / 2
+  const features = []
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const t = getInfo(x, y).type
+      let render = true
+      switch (t) {
+        case 'nothing': {
+          continue
+          break;
+        }
+        case terrainType.OTHER_LAND: {
+          render = Math.random() > .8
+          break;
+        }
+        case terrainType.LAND: {
+          render = Math.random() > .9
+          break;
+        }
+        case terrainType.MUSHROOM: {
+          render = Math.random() > .98
+          break;
+        }
+        case terrainType.FLOWER: {
+          render = Math.random() > .99
+          break;
+        }
+        case terrainType.SMALL_GRASS: {
+          render = Math.random() > .9
+          break;
+        }
+        case terrainType.BIG_GRASS: {
+          render = Math.random() > .5
+          break;
+        }
+        case terrainType.TREE: {
+          render = Math.random() > .8
+          break;
+        }
+        case terrainType.TREE_LARGE: {
+          render = Math.random() > .9
+          break;
+        }
+        case terrainType.HIDDEN_GRASS: {
+          render = Math.random() > .6
+          break;
+        }
+        default: {
+          //statements; 
+          break;
+        }
+      }
+      if (!render) continue
+      features.push({
+        x: x * spacing - offset,
+        y: y * spacing - offset,
+        asset: Array.isArray(t) ? t[~~(Math.random() * t.length)] : t
+      })
+    }
+  }
+
+
+  return features.map(({x, y, asset}, index) => {
+    return <Gltf key={index} src={asset} position={[x, 0, y]} />
+  })
+}
 
 export default function Home() {
+
+  const random = chance(`${Math.random()}`)
+  const [terrainSeed, setTerrainSeed] = useState(0)
+  const [size, setSize] = useState(500)
+  const [spacing, setSppacing] = useState(.2)
+
+  function handleClick() {
+    setTerrainSeed(random.integer({min: 1000, max: 9999}))
+  }
+
+  const terrainVariantSeed = random.integer({min: 1000, max: 9999})
+
+  const getTerrainInfo = useTerrainNoise({
+    size,
+    blur: 100,
+    octaves: 20,
+    frequency: 0.00625,
+    persistence: 0.6,
+    terrainNoise: useNoise2D({seed: terrainSeed}),
+    variantNoise: useNoise2D({seed: terrainVariantSeed})
+  })
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="grid grid-rows-2 grid-flow-col min-h-full min-w-full">
+      <div className="row-span-3 col-span-2 min-h-full">
+        <div className="min-h-full min-w-full"
+          style={{position: "relative", width: size, height: size}}>
+          <Canvas
+            camera={{position: [-2.5, 1, 17.5]}}
           >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            <color attach="background" args={['#fff']} />
+            <ambientLight intensity={0.9} />
+            <spotLight position={[50, 50, 50]} angle={0} penumbra={1} />
+            <pointLight position={[0, 0, 0]} />
+            <MapBuilder getInfo={getTerrainInfo} size={size} spacing={spacing} />
+            <Grid infiniteGrid={true} />
+            <CameraControls makeDefault />
+          </Canvas>
         </div>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
+      <div className="grid place-content-center bg-[#000]">
+        <div className='grid place-content-center bg-[#000]'>
+          <World
+            size={size}
+            // cloudsSeed={3964}
+            terrainInfo={getTerrainInfo}
+          // cloudsVariantSeed={7829}
+          // terrainVariantSeed={3333}
+          />
+        </div>
       </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+      <div className="row-span-2 col-span-1 min-h-full">
+        <div className="min-h-full min-w-full">
+          <button className='rounded-full-lg bg-indigo-500 text-white' onClick={handleClick}>Randomize</button>
+          <p>Seed: {terrainSeed}</p>
+          <p>Spacing: {spacing}</p>
+          <p>Size: {size}</p>
+        </div>
       </div>
     </main>
   )

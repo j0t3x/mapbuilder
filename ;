@@ -1,0 +1,15 @@
+const objects = {
+  OCEAN: 'nothing',
+  SEA: 'nothing',
+  OTHER_LAND: '/models/grass_leafs.glb',
+  LAND: '/models/flower_redA.glb',
+  MUSHROOM: '/models/mushroom_tangroup.glb',
+  FLOWER: '/models/lily_small.glb',
+  SMALL_GRASS: '/models/grass.glb',
+  BIG_GRASS: '/models/grass_large.glb',
+  TREE: '/models/tree_oak.glb',
+  TREE_LARGE: '/models/tree_tall.glb',
+  HIDDEN_GRASS: '/models/grass_leafsLarge.glb'
+}
+
+export default objects
